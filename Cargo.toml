@@ -28,6 +28,7 @@ gosh = [ 'ton_block/gosh', 'zstd' ]
 log_file = [  ]
 required-features = [ 'gosh' ]
 verbose = [  ]
+signature_with_id = [  ]
 
 [[bench]]
 harness = false
