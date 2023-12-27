@@ -19,6 +19,7 @@ similar = { features = [ 'bytes' ], optional = true, version = '2.2.0' }
 ton_block = { git = 'https://github.com/tonlabs/ever-block.git', tag = '1.9.119' }
 ton_types = { git = 'https://github.com/tonlabs/ever-types.git', tag = '2.0.31' }
 zstd = { default-features = false, optional = true, version = '0.11' }
+crusty3_zk = { git = 'https://github.com/nilfoundation/crusty3-zk.git', branch = '6-extended-vk-encrypted-input-verification' }
 
 [dev-dependencies]
 criterion = '0.4'

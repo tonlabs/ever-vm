@@ -25,10 +25,26 @@ use crate::{
     },
     types::{Exception, Status}
 };
+
 use ed25519::signature::Verifier;
 use std::borrow::Cow;
 use ton_block::GlobalCapabilities;
-use ton_types::{BuilderData, error, GasConsumer, ExceptionCode, UInt256};
+use ton_types::{
+    BuilderData,
+    Cell,
+    error,
+    GasConsumer,
+    ExceptionCode,
+    UInt256,
+    Result,
+};
+use crusty3_zk::{
+    groth16::{
+        verify_groth16_proof_from_byteblob,
+        verify_encrypted_input_groth16_proof_from_byteblob,
+    },
+    bls::{Bls12},
+};
 
 const PUBLIC_KEY_BITS:  usize = PUBLIC_KEY_BYTES * 8;
 const SIGNATURE_BITS:   usize = SIGNATURE_BYTES * 8;
@@ -75,6 +91,43 @@ pub(super) fn execute_sha256u(engine: &mut Engine) -> Status {
         let hash_int = hash_to_uint(hash);
         engine.cc.stack.push(StackItem::integer(hash_int));
         Ok(())
+    } else {
+        err!(ExceptionCode::CellUnderflow)
+    }
+}
+
+pub fn obtain_cells_data(cl: Cell) -> Result<Vec<u8>> {
+	let mut byte_blob = Vec::new();
+    let mut queue = vec!(cl.clone());
+    while let Some(cell) = queue.pop() {
+        let this_reference_data = cell.data();
+
+        byte_blob.extend(this_reference_data[0..this_reference_data.len()-1].iter().copied());
+
+        let count = cell.references_count();
+        for i in 0..count {
+            queue.push(cell.reference(i)?);
+        }
+    }
+
+    Ok(byte_blob)
+}
+
+pub(super) fn execute_vergrth16(engine: &mut Engine) -> Status {
+    engine.load_instruction(Instruction::new("VERGRTH16"))?;
+    fetch_stack(engine, 1)?;
+    let builder = engine.cmd.var(0).clone().as_builder_mut()?;
+    let cell_proof_data_length = builder.length_in_bits();
+    let cell_proof = engine.finalize_cell(builder.into())?;
+    let cell_proof_data = obtain_cells_data(cell_proof).unwrap();
+    if cell_proof_data_length % 8 == 0 {
+        let result = if cell_proof_data[0] == 0 {
+            verify_groth16_proof_from_byteblob::<Bls12>(&cell_proof_data[1..]).unwrap()
+        } else {
+            verify_encrypted_input_groth16_proof_from_byteblob::<Bls12>(&cell_proof_data[1..]).unwrap()
+        };
+        engine.cc.stack.push(boolean!(result));
+        return Ok(())
     } else {
         err!(ExceptionCode::CellUnderflow)
     }
