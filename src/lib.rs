@@ -24,5 +24,6 @@ pub mod smart_contract_info;
 pub use self::smart_contract_info::SmartContractInfo;
 pub mod error;
 pub mod utils;
+mod test;
 
 include!("../common/src/info.rs");
